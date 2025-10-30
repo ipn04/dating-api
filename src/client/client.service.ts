@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -92,10 +92,88 @@ export class ClientService {
         age: otherUser.age,
         bio: otherUser.bio,
         profile: otherUser.profile,
+        matchId: match.id,
+        createdAt: match.createdAt,
       };
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return result;
+  }
+
+  async sendMessage(senderId: string, receiverId: string, content: string) {
+    const match = await this.prisma.match.findFirst({
+      where: {
+        OR: [
+          { userAId: senderId, userBId: receiverId },
+          { userAId: receiverId, userBId: senderId },
+        ],
+      },
+    });
+
+    if (!match) {
+      throw new BadRequestException(
+        'You can only message users you have matched with',
+      );
+    }
+
+    return this.prisma.message.create({
+      data: {
+        matchId: match.id,
+        senderId,
+        receiverId,
+        content,
+      },
+    });
+  }
+
+  async getMessages(userId: string, matchId: string) {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+    });
+
+    if (!match || (match.userAId !== userId && match.userBId !== userId)) {
+      throw new BadRequestException('You are not part of this match');
+    }
+
+    await this.prisma.message.updateMany({
+      where: {
+        matchId,
+        receiverId: userId,
+        isDelivered: true,
+      },
+      data: {
+        isDelivered: true,
+      },
+    });
+
+    return this.prisma.message.findMany({
+      where: { matchId },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async removeMatch(userId: string, otherUserId: string) {
+    const [firstId, secondId] = [userId, otherUserId].sort();
+
+    const match = await this.prisma.match.findUnique({
+      where: {
+        userAId_userBId: {
+          userAId: firstId,
+          userBId: secondId,
+        },
+      },
+    });
+
+    if (!match) {
+      throw new BadRequestException('No match exists between these users');
+    }
+
+    await this.prisma.match.delete({
+      where: {
+        id: match.id,
+      },
+    });
+
+    return { success: true };
   }
 }

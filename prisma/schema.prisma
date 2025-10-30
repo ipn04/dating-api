@@ -14,40 +14,69 @@ datasource db {
 }
 
 model User {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   name           String
   age            Int
   bio            String
-  email          String @unique
+  email          String    @unique
   password       String
   profile        String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  likesGiven     Like[] @relation("LikesGiven")
-  likesReceived  Like[] @relation("LikesReceived")
-  matchesA       Match[] @relation("UserAMatches")
-  matchesB       Match[] @relation("UserBMatches")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  likesGiven     Like[]    @relation("LikesGiven")
+  likesReceived  Like[]    @relation("LikesReceived")
+  matchesA       Match[]   @relation("UserAMatches")
+  matchesB       Match[]   @relation("UserBMatches")
+  sentMessages   Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
 }
 
 model Like {
   id         String   @id @default(uuid())
-  client   User     @relation("LikesGiven", fields: [clientId], references: [id])
-  clientId String
-  user     User     @relation("LikesReceived", fields: [userId], references: [id])
-  userId   String
+  client     User     @relation("LikesGiven", fields: [clientId], references: [id], onDelete: Cascade)
+  clientId   String
+  user       User     @relation("LikesReceived", fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
   liked      Boolean
   createdAt  DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  updatedAt  DateTime @updatedAt
+
   @@unique([clientId, userId])
+  @@index([clientId])
+  @@index([userId])
 }
 
 model Match {
-  id        String   @id @default(uuid())
-  userA     User     @relation("UserAMatches", fields: [userAId], references: [id])
+  id        String    @id @default(uuid())
+  userA     User      @relation("UserAMatches", fields: [userAId], references: [id], onDelete: Cascade)
   userAId   String
-  userB     User @relation("UserBMatches", fields: [userBId], references: [id])
+  userB     User      @relation("UserBMatches", fields: [userBId], references: [id], onDelete: Cascade)
   userBId   String
-  createdAt DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+
   @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  content    String
+  match      Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId    String
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId   String
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  receiverId String
+  isDelivered Boolean @default(false)
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([matchId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
 }
