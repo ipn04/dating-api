@@ -1,26 +1,27 @@
+# Use Node 20 Alpine for small image
 FROM node:20-alpine
 
 # Install tools for building native modules (Prisma, etc.)
 RUN apk add --no-cache bash build-base python3
 
+# Set working directory
 WORKDIR /app
 
-# Copy only package files first to leverage Docker cache
+# Copy only package.json & package-lock.json for caching dependencies
 COPY package*.json ./
 
+# Clean npm cache and install dependencies
 RUN npm cache clean --force
 RUN npm install --legacy-peer-deps
 
-# Copy everything else after dependencies are installed
+# Copy all source files
 COPY . .
 
-# Generate Prisma client (needed for dev)
-RUN npx prisma generate
-
-# Optional: build TypeScript (dev can also run without build)
+# Build TypeScript (NestJS)
 RUN npm run build
 
+# Expose NestJS port
 EXPOSE 3333
 
-# Start dev server
-CMD [  "npm", "run", "start:migrate:prod" ]
+# Start server (generate Prisma client at runtime)
+CMD ["sh", "-c", "npx prisma generate && npm run start:prod"]
