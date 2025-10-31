@@ -4,7 +4,7 @@ services:
   dev-db:
     image: postgres:13
     ports:
-      - '5434:5432'
+      - '5434:5432'   # Host:Container (EC2:Postgres)
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -15,15 +15,13 @@ services:
   backend:
     build: .
     ports:
-      - "3333:3333"
+      - "3333:3333"   # Expose backend to EC2
     env_file:
       - .env
     depends_on:
       - dev-db
     networks:
       - datingApp
-    command: >
-      sh -c "npx prisma generate && npm run start:prod"
 
 networks:
   datingApp:
